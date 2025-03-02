@@ -29,7 +29,7 @@ jobs:
          for file in $CHANGED_FILES; do
          if [[ -f "$file" ]]; then
          echo "Scanning $file"
-         trufflehog --regex --entropy=True "$file" || true
+         trufflehog filesystem --path "$file" --entropy=True || true
          fi
          done
 
