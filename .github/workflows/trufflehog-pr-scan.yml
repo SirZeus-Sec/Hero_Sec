@@ -26,9 +26,10 @@ jobs:
 
       - name: Scan Changed Files
         run: |
-          for file in $CHANGED_FILES; do
-            if [[ -f "$file" ]]; then
-              echo "Scanning $file"
-              trufflehog filesystem --path "$file" --entropy=True || true
-            fi
-          done
+         for file in $CHANGED_FILES; do
+         if [[ -f "$file" ]]; then
+         echo "Scanning $file"
+         trufflehog --regex --entropy=True "$file" || true
+         fi
+         done
+
