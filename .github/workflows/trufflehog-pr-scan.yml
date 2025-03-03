@@ -23,9 +23,11 @@ jobs:
       - name: Get Changed Files
         id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} HEAD)
-          echo "Changed files: $CHANGED_FILES"
-          echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
+         BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+         CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH HEAD)
+         echo "Changed files: $CHANGED_FILES"
+         echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
+
 
       - name: Install TruffleHog
         run: |
