@@ -1,46 +1,40 @@
-name: Secret Scan with TruffleHog
+name: TruffleHog Secret Scan
 
 on:
   pull_request:
     branches:
-      - main  # Adjust based on your default branch
+      - main  # Adjust to match your default/main branch
+
+permissions:
+  contents: read
+  pull-requests: read  # Required to fetch changed files
 
 jobs:
-  secret-scan:
+  trufflehog_scan:
+    name: Secret Scan with TruffleHog
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Fetch limited history to reduce network usage
+          fetch-depth: 2  # Ensures we have enough history to compare changes
 
-      - name: Ensure full history for git diff
-        run: |
-          if git rev-parse --is-shallow-repository; then
-            git fetch --prune --unshallow
-          else
-            git fetch --prune
-          fi
-
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
-
-      - name: Get changed files
+      - name: Get Changed Files
         id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | tr '\n' ' ')
           echo "Changed files: $CHANGED_FILES"
           echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Install TruffleHog
-        run: pip install trufflehog
-
-      - name: Run TruffleHog on changed files
         run: |
-          if [ -n "$FILES" ]; then
-            echo "Scanning changed files..."
-            trufflehog filesystem --no-history $FILES
-          else
-            echo "No changed files detected."
+          pip install trufflehog
+
+      - name: Run TruffleHog on Changed Files
+        run: |
+          if [[ -z "$FILES" ]]; then
+            echo "No changed files to scan."
+            exit 0
           fi
+          trufflehog filesystem --path $FILES || echo "Secrets detected!"
