@@ -1,36 +1,38 @@
-name: TruffleHog Secret Scan on PR
+name: Secret Scan with TruffleHog
 
 on:
   pull_request:
     branches:
-      - main
-
+      - main  # Adjust based on your default branch
 
 jobs:
   secret-scan:
-    name: Run TruffleHog on Changed Files
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensure full history for diffs
+          fetch-depth: 0  # Ensure full history for proper git diff
 
-      - name: Get Changed Files
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Get changed files
         id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }})
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
           echo "Changed files: $CHANGED_FILES"
           echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Install TruffleHog
-        run: |
-          pip install trufflehog
+        run: pip install trufflehog
 
-      - name: Run TruffleHog Scan
+      - name: Run TruffleHog on changed files
         run: |
-          for file in $FILES; do
-            echo "Scanning $file"
-            trufflehog filesystem --path $file || exit 1
-          done
+          if [ -n "$FILES" ]; then
+            echo "Scanning changed files..."
+            trufflehog filesystem --no-history $FILES
+          else
+            echo "No changed files detected."
+          fi
