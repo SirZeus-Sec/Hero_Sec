@@ -1,34 +1,50 @@
-name: TruffleHog Scan on PR Changes
+name: TruffleHog Secret Scan
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    branches:
+      - main  # Change as needed
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   trufflehog_scan:
-    name: Scan Changed Files for Secrets
+    name: Secret Scan with TruffleHog
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Ensures we get previous commit for diff
+          fetch-depth: 2  # Ensure we get previous commit for diff
 
       - name: Get Changed Files
         id: changed-files
         run: |
-          echo "CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')" >> $GITHUB_ENV
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Install TruffleHog
         run: |
           pip install trufflehog
 
-      - name: Scan Changed Files
+      - name: Run TruffleHog on Changed Files
         run: |
-          for file in $CHANGED_FILES; do
-            if [[ -f "$file" ]]; then
-              echo "Scanning $file"
-              trufflehog filesystem --path "$file" --entropy=True || true
-            fi
+          if [[ -z "$FILES" ]]; then
+            echo "No changed files to scan."
+            exit 0
+          fi
+          
+          echo "Scanning changed files: $FILES"
+          for file in $FILES; do
+            echo "Scanning $file..."
+            trufflehog filesystem --path "$file" || FOUND=true
           done
+
+          if [[ "$FOUND" == "true" ]]; then
+            echo "⚠️ Secrets detected!"
+            exit 1
+          fi
