@@ -3,11 +3,11 @@ name: TruffleHog Secret Scan
 on:
   pull_request:
     branches:
-      - main  # Adjust to match your default/main branch
+      - main  # Change as needed
 
 permissions:
   contents: read
-  pull-requests: read  # Required to fetch changed files
+  pull-requests: read
 
 jobs:
   trufflehog_scan:
@@ -18,12 +18,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Ensures we have enough history to compare changes
+          fetch-depth: 2  # Ensure we get previous commit for diff
 
       - name: Get Changed Files
         id: changed-files
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | tr '\n' ' ')
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} HEAD)
           echo "Changed files: $CHANGED_FILES"
           echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
@@ -37,4 +37,14 @@ jobs:
             echo "No changed files to scan."
             exit 0
           fi
-          trufflehog filesystem --path $FILES || echo "Secrets detected!"
+          
+          echo "Scanning changed files: $FILES"
+          for file in $FILES; do
+            echo "Scanning $file..."
+            trufflehog filesystem --path "$file" || FOUND=true
+          done
+
+          if [[ "$FOUND" == "true" ]]; then
+            echo "⚠️ Secrets detected!"
+            exit 1
+          fi
