@@ -3,7 +3,7 @@ name: TruffleHog Secret Scan
 on:
   pull_request:
     branches:
-      - main  # Change as needed
+      - main  # Change if needed
 
 permissions:
   contents: read
@@ -16,23 +16,22 @@ jobs:
     
     steps:
       - name: Checkout Code
-  uses: actions/checkout@v4
-  with:
-    fetch-depth: 0  # Fetch full history, including branches
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for diff comparison
 
-      - name: Fetch base branch
+      - name: Fetch Base Branch
         run: |
-    git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
-
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          git fetch origin $BASE_BRANCH --depth=1
 
       - name: Get Changed Files
         id: changed-files
         run: |
-         BASE_BRANCH=${{ github.event.pull_request.base.ref }}
-         CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH HEAD)
-         echo "Changed files: $CHANGED_FILES"
-         echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
-
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          echo "FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: Install TruffleHog
         run: |
@@ -41,17 +40,19 @@ jobs:
       - name: Run TruffleHog on Changed Files
         run: |
           if [[ -z "$FILES" ]]; then
-            echo "No changed files to scan."
+            echo "✅ No changed files to scan."
             exit 0
           fi
           
-          echo "Scanning changed files: $FILES"
+          echo "🔍 Scanning changed files: $FILES"
+          FOUND=false
           for file in $FILES; do
             echo "Scanning $file..."
-            trufflehog filesystem --path "$file" || FOUND=true
+            trufflehog filesystem --path "$file" && continue
+            FOUND=true
           done
 
           if [[ "$FOUND" == "true" ]]; then
-            echo "⚠️ Secrets detected!"
+            echo "❌ Secrets detected! Failing the job."
             exit 1
           fi
