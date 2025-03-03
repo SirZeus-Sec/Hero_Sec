@@ -13,15 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for proper diff
+          fetch-depth: 2  # Fetch limited history to reduce network usage
 
-      - name: Fetch all branches
-        run: git fetch --prune --unshallow
-
-      - name: Ensure base branch exists locally
+      - name: Ensure full history for git diff
         run: |
-          git checkout ${{ github.base_ref }}
-          git pull origin ${{ github.base_ref }}
+          if git rev-parse --is-shallow-repository; then
+            git fetch --prune --unshallow
+          else
+            git fetch --prune
+          fi
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
 
       - name: Get changed files
         id: changed-files
